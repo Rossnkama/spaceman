@@ -419,6 +419,13 @@ impl Workspaces {
         }
     }
 
+    /// Every workspace tiles with the same gaps.
+    pub(crate) fn set_gaps(&mut self, gaps: crate::Gaps) {
+        for engine in &mut self.engines {
+            engine.set_gaps(gaps);
+        }
+    }
+
     #[must_use]
     pub fn default_assignment(workspace: WorkspaceId) -> DisplaySelector {
         match workspace.number() {

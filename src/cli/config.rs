@@ -23,6 +23,7 @@ struct ShowOutput {
     exists: bool,
     version: u32,
     settings: EffectiveSettings,
+    gaps: spaceman::Gaps,
     rules: Vec<RuleView>,
     workspaces: Vec<WorkspaceDoc>,
 }
@@ -148,6 +149,7 @@ fn run_show(args: &[&str], path_override: Option<&Path>) -> Result<String, Strin
             exists,
             version: doc.version,
             settings: doc.effective_settings(),
+            gaps: doc.gaps,
             rules: doc.rule_views(),
             workspaces: doc.workspaces,
         })

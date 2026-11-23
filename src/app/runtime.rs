@@ -491,7 +491,7 @@ impl<B: WorkspaceBackend> WorkspaceRuntime<B> {
                 .placements(&Settings::for_output(resolved.output));
             if self.workspaces.uses_fullscreen_layout(resolved.workspace) {
                 for placement in &mut placements {
-                    placement.frame = resolved.output;
+                    placement.frame = self.config.gaps().inset(resolved.output);
                 }
             }
             tiles.extend(placements.into_iter().filter_map(|placement| {
@@ -671,6 +671,8 @@ impl<B: WorkspaceBackend> WorkspaceRuntime<B> {
         if !self.workspaces.uses_fullscreen_layout(workspace) {
             return;
         }
+        // Fullscreen Layout keeps the outer gaps, like a lone tile.
+        let output = self.config.gaps().inset(output);
         for placement in placements {
             placement.frame = output;
             self.workspaces

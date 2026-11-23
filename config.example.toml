@@ -10,6 +10,17 @@ hud = true
 hud_style = "icons"
 update_channel = "stable"
 
+# Gaps are optional, in points, and default to 0. inner is the space between neighboring
+# tiles (horizontal: side by side, vertical: one above the other); outer is the space
+# between tiles and each edge of the display's usable area.
+[gaps]
+inner.horizontal = 0
+inner.vertical = 0
+outer.left = 0
+outer.bottom = 0
+outer.top = 0
+outer.right = 0
+
 # Rules are optional, ordered, and first-match wins. Every matcher present in a
 # rule must match exactly. Valid actions are "float", "route", and "ignore".
 [[rules]]

@@ -32,6 +32,8 @@ Spaceman currently:
 - can register its signed app bundle with macOS to launch automatically at login;
 - supports directional focus and movement across displays, drag-to-reorder/nest, mouse and keyboard
   resizing, balancing, and a workspace-wide Fullscreen Layout;
+- leaves optional gaps between tiles and around the display's edges (`[gaps]`, with AeroSpace's
+  `inner.horizontal`/`inner.vertical` and `outer.left`/`bottom`/`top`/`right` keys);
 - keeps movable non-resizable and rule-floated windows with their logical workspace without tiling
   or resizing them;
 - exposes a local CLI over a user-only Unix socket.
@@ -169,7 +171,7 @@ spaceman ctl resume
 ## Configure
 
 Spaceman reads `~/Library/Application Support/Spaceman/config.toml` at startup and reloads rule,
-display, and HUD (on/off and style) edits automatically when the file changes. See the exact current schema and
+display, gap, and HUD (on/off and style) edits automatically when the file changes. See the exact current schema and
 [config.example.toml](config.example.toml) in [Configuration](docs/configuration.md).
 
 ```sh

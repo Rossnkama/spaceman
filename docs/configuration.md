@@ -25,7 +25,7 @@ The complete example is [config.example.toml](../config.example.toml).
 ## Current Schema
 
 The parser rejects unknown fields. The root must contain `version = 1` and may contain an optional
-`[settings]` table plus repeated `[[rules]]` and `[[workspaces]]` tables.
+`[settings]` table, an optional `[gaps]` table, plus repeated `[[rules]]` and `[[workspaces]]` tables.
 
 ```toml
 version = 1
@@ -34,6 +34,14 @@ version = 1
 hud = true                            # optional (default: true); non-activating Workspace HUD
 hud_style = "icons"                   # optional (default: "icons"); or "layouts"
 update_channel = "stable"             # optional (default: "stable"); or "dev", a build of every merge
+
+[gaps]                                # optional; every key is optional and defaults to 0 points
+inner.horizontal = 8                  # between tiles side by side
+inner.vertical = 8                    # between tiles one above the other
+outer.left = 8                        # between tiles and each edge of the display's usable area
+outer.bottom = 8
+outer.top = 8
+outer.right = 8
 
 [[rules]]
 bundle_id = "com.example.Application" # optional exact match
@@ -77,6 +85,26 @@ memory.
 
 Title matching occurs only in memory. Titles are not serialized into persisted state, snapshots,
 `ctl debug`, or the HUD.
+
+## Gaps
+
+`[gaps]` leaves empty space around tiles. It uses the same keys as AeroSpace's `[gaps]` table, each a
+whole number of points from 0 to 65535:
+
+- `inner.horizontal` separates tiles that sit side by side, and `inner.vertical` separates tiles that
+  sit one above the other, at every level of a nested split.
+- `outer.left`, `outer.bottom`, `outer.top`, and `outer.right` separate tiles from the edges of the
+  display's usable area (the area below the menu bar and clear of the Dock).
+
+For example, on a 1000-point-wide display with `outer.left = 20`, `outer.right = 20`, and
+`inner.horizontal = 10`, two equal tiles are each 475 points wide: the first spans 20 to 495 and the
+second 505 to 980.
+
+The gaps apply to every workspace on every display. A lone tile and Fullscreen Layout fill the
+display inside the outer gaps. Pointer and keyboard resizes, balancing, and minimum-size fitting keep
+the gaps. Floating windows are unaffected, and the Workspace HUD's layout drawings do not show gaps.
+Outer gaps that would leave no room on a display, or an inner gap as large as a tile's share of
+the display, are ignored on that axis. AeroSpace's per-monitor gap values are not supported.
 
 ## Remembered Placements
 
@@ -145,7 +173,7 @@ normal recovery data.
 ## Applying Changes
 
 Edits saved in Spaceman Settings or in an external editor take effect automatically: rule changes,
-workspace display assignments, `settings.hud`, and `settings.hud_style` reload without restarting;
+workspace display assignments, `[gaps]`, `settings.hud`, and `settings.hud_style` reload without restarting;
 `settings.update_channel` applies at the next update check. Global shortcuts for a
 newly added named workspace letter (`Option+A` ... `Option+Z`) register on the next app start:
 

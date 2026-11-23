@@ -6,7 +6,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 use spaceman::{
-    DisplaySelector, WorkspaceId, Workspaces,
+    DisplaySelector, Gaps, WorkspaceId, Workspaces,
     config::{Config, HudStyle, UpdateChannel, config_path},
     state_file::write_atomic,
 };
@@ -17,6 +17,8 @@ pub(crate) struct ConfigDoc {
     pub version: u32,
     #[serde(default, skip_serializing_if = "SettingsDoc::is_empty")]
     pub settings: SettingsDoc,
+    #[serde(default, skip_serializing_if = "Gaps::is_zero")]
+    pub gaps: Gaps,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rules: Vec<RuleDoc>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -28,6 +30,7 @@ impl Default for ConfigDoc {
         Self {
             version: 1,
             settings: SettingsDoc::default(),
+            gaps: Gaps::default(),
             rules: Vec::new(),
             workspaces: Vec::new(),
         }
@@ -145,6 +148,7 @@ impl RuleView {
 struct EffectiveConfigToml<'a> {
     version: u32,
     settings: EffectiveSettings,
+    gaps: Gaps,
     #[serde(skip_serializing_if = "<[RuleDoc]>::is_empty")]
     rules: &'a [RuleDoc],
     #[serde(skip_serializing_if = "<[WorkspaceDoc]>::is_empty")]
@@ -188,6 +192,7 @@ impl ConfigDoc {
         let view = EffectiveConfigToml {
             version: self.version,
             settings: self.effective_settings(),
+            gaps: self.gaps,
             rules: &self.rules,
             workspaces: &self.workspaces,
         };

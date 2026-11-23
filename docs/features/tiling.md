@@ -35,6 +35,13 @@ Size                                                    // tile.size
 └── Window refuses its tile size (app minimum) -> its tile grows to fit and siblings give up
     the space; if necessary, try stacking an adjacent pair
 
+Gaps                                                    // tile.gaps
+└── [gaps] inner.horizontal|vertical, outer.left|bottom|top|right (points, default 0)
+    ├── Inner -> space between neighboring tiles at every nesting depth
+    ├── Outer -> space between tiles and the display's usable area; a lone tile and
+    │            Fullscreen Layout fill the area inside it
+    └── Config reload -> next layout uses the new gaps, no restart
+
 Axis                                                    // tile.axis
 └── Option+/ / ctl layout -> flip the root split axis (also exits Fullscreen Layout)
 ```
@@ -76,6 +83,10 @@ pause, quit, or hotkey loss.
 - Unit (FakeBackend), `src/app/tests/minimums.rs`: a window that refuses its tile width gets a wider
   tile (middle, last, several at once, and observation-cycle cases); a three-window row that cannot fit stacks two neighbors, and a wider display restores the requested row; Fullscreen Layout ignores minimums. `src/layout_tree.rs`:
   `fitting_minimums_reaches_into_nested_splits_and_leaves_impossible_splits_alone`.
+- Unit (FakeBackend), `src/app/tests/gaps.rs`: outer and inner gaps in a nested split, a lone tile
+  and Fullscreen Layout inside the outer gaps, pointer and keyboard resizes keeping the inner gap,
+  minimum-size fitting between gaps, and a reloaded config retiling. `src/gaps.rs` covers the
+  frame math; `src/config.rs` covers parsing and `saving_a_workspace_monitor_keeps_the_gaps`.
 - Fixture replay: `cargo run -- replay fixtures/ghostty-tab-replacement.json` (reconciliation of a
   native-tab replacement, without the runtime).
 - Live harness (not run): `scripts/live-ghostty-tabs.sh` for native-tab slot preservation.
@@ -101,6 +112,10 @@ pause, quit, or hotkey loss.
   same; the window comes back as a new tile at the end of the layout. While nothing on the display
   is observed (another macOS Space is showing), tiles are kept.
 - `balance` has no default hotkey; it is CLI-only.
+- Gaps are applied by the running app only. The CLI probes (`spaceman retile`, `watch`,
+  `watch-window`, `replay`, with or without `--apply`) reconcile on their own and use gapless frames.
+- `spaceman config show` prints `[gaps]`, but `config get` and `config set` do not take gap keys;
+  edit `config.toml` directly.
 - A window that enters macOS native fullscreen (for example browser video) loses its slot after two
   seconds and returns as a new tile at the end of the layout
   ([known defect](fullscreen-layout.md#gotchas)).

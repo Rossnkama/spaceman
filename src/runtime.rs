@@ -19,6 +19,7 @@ pub struct StaleCycle {
 pub struct Engine {
     model: Model,
     layout: LayoutTree,
+    gaps: crate::Gaps,
     // Only the requested layout above is persisted. The fit is shared by
     // placement, navigation and HUD previews until its inputs change.
     fit: Option<DisplayFit>,
@@ -77,7 +78,7 @@ impl Engine {
                 .insertion_focus
                 .filter(|&id| result.model.slot(id).is_some());
         }
-        result.placements = placements_for(self.display_layout(), &result.model, settings.output);
+        result.placements = self.tiles(&result.model, settings.output);
         self.evidence.previous_placements = result
             .placements
             .iter()
@@ -108,7 +109,25 @@ impl Engine {
 
     #[must_use]
     pub fn placements(&self, settings: &Settings) -> Vec<Placement> {
-        placements_for(self.display_layout(), &self.model, settings.output)
+        self.tiles(&self.model, settings.output)
+    }
+
+    /// Changing the gaps moves every tile, so pending work is invalidated.
+    pub(crate) fn set_gaps(&mut self, gaps: crate::Gaps) {
+        if self.gaps != gaps {
+            self.gaps = gaps;
+            self.invalidate_layout();
+        }
+    }
+
+    /// The layout's cells in `output`, each shrunk to its tile by the gaps.
+    fn tiles(&self, model: &Model, output: crate::Rect) -> Vec<Placement> {
+        let mut placements =
+            placements_for(self.display_layout(), model, self.gaps.layout_area(output));
+        for placement in &mut placements {
+            placement.frame = self.gaps.tile(placement.frame);
+        }
+        placements
     }
 
     pub(crate) fn record_placement_target(&mut self, slot: crate::SlotId, frame: crate::Rect) {
@@ -199,7 +218,10 @@ impl Engine {
         current: crate::Rect,
         output: crate::Rect,
     ) -> bool {
-        self.edit_slot(window, |layout, slot| layout.resize(slot, current, output))
+        let gaps = self.gaps;
+        self.edit_slot(window, |layout, slot| {
+            layout.resize(slot, gaps.cell(current), gaps.layout_area(output))
+        })
     }
 
     pub(crate) fn remember_insertion_focus(&mut self, window: &PhysicalWindowId) {
@@ -223,12 +245,16 @@ impl Engine {
         if minimums.is_empty() {
             return self.fit.take().is_some_and(|fit| fit.tree.is_some());
         }
+        let output = self.gaps.layout_area(output);
         let slots: std::collections::HashMap<_, _> = self
             .model
             .workspace
             .slots
             .iter()
-            .filter_map(|slot| Some((slot.id, *minimums.get(slot.bound_window()?)?)))
+            .filter_map(|slot| {
+                let minimum = *minimums.get(slot.bound_window()?)?;
+                Some((slot.id, self.gaps.cell_minimum(minimum)))
+            })
             .collect();
         if slots.is_empty() {
             return self.fit.take().is_some_and(|fit| fit.tree.is_some());
@@ -257,6 +283,7 @@ impl Engine {
         amount: i32,
         output: crate::Rect,
     ) -> bool {
+        let output = self.gaps.layout_area(output);
         self.edit_slot(window, |layout, slot| {
             layout.resize_by(slot, direction, amount, output)
         })
@@ -267,6 +294,7 @@ impl Engine {
         window: &PhysicalWindowId,
         output: crate::Rect,
     ) -> bool {
+        let output = self.gaps.layout_area(output);
         self.edit_slot(window, |layout, slot| layout.balance(slot, output))
     }
 
@@ -302,7 +330,8 @@ impl Engine {
         self.display_layout().root_axis()
     }
 
-    /// Each tile's slot, window and frame in `output`, in layout order.
+    /// Each tile's slot, window and frame in `output`, in layout order. Previews are
+    /// scaled-down drawings, so the gaps (which are in screen points) do not apply.
     pub(crate) fn preview_placements(&self, output: crate::Rect) -> Vec<Placement> {
         placements_for(self.display_layout(), &self.model, output)
     }

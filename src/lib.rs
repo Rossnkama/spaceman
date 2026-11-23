@@ -3,6 +3,7 @@ pub mod app;
 pub mod config;
 #[cfg(target_os = "macos")]
 pub mod control;
+pub mod gaps;
 pub mod geometry;
 #[cfg(target_os = "macos")]
 #[allow(unsafe_code)]
@@ -44,6 +45,7 @@ mod updater;
 pub mod window_memory;
 pub mod workspace;
 
+pub use gaps::Gaps;
 pub use geometry::{Axis, Rect};
 pub use model::{AppInstanceId, BindingState, Model, PhysicalWindowId, Slot, SlotId};
 pub use navigation::{Direction, NavigationTile};

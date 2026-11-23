@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{DisplaySelector, ObservedWindow, WorkspaceId, Workspaces};
+use crate::{DisplaySelector, Gaps, ObservedWindow, WorkspaceId, Workspaces};
 
 #[derive(Clone, Copy, Debug)]
 struct AppSettings {
@@ -84,6 +84,7 @@ impl HudStyle {
 #[derive(Clone, Debug, Default)]
 pub struct Config {
     settings: AppSettings,
+    gaps: Gaps,
     rules: Vec<WindowRule>,
     workspace_monitors: Vec<(WorkspaceId, DisplaySelector)>,
 }
@@ -116,6 +117,8 @@ struct RawConfig {
     version: u32,
     #[serde(default)]
     settings: RawSettings,
+    #[serde(default)]
+    gaps: Gaps,
     #[serde(default)]
     rules: Vec<RawWindowRule>,
     #[serde(default)]
@@ -220,6 +223,7 @@ impl Config {
                 hud_style: raw.settings.hud_style,
                 update_channel: raw.settings.update_channel,
             },
+            gaps: raw.gaps,
             rules,
             workspace_monitors,
         })
@@ -238,6 +242,12 @@ impl Config {
     #[must_use]
     pub const fn update_channel(&self) -> UpdateChannel {
         self.settings.update_channel
+    }
+
+    /// Space left around tiles: the `[gaps]` table.
+    #[must_use]
+    pub const fn gaps(&self) -> Gaps {
+        self.gaps
     }
 
     pub fn load() -> Result<Self, String> {
@@ -284,6 +294,7 @@ impl Config {
     }
 
     pub fn configure_workspaces(&self, workspaces: &mut Workspaces) {
+        workspaces.set_gaps(self.gaps);
         for workspace in self.named_workspaces() {
             workspaces.enable(workspace);
         }
@@ -414,6 +425,8 @@ struct EditableConfig {
     version: u32,
     #[serde(default, skip_serializing_if = "EditableSettings::is_empty")]
     settings: EditableSettings,
+    #[serde(default, skip_serializing_if = "Gaps::is_zero")]
+    gaps: Gaps,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     rules: Vec<EditableRule>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -425,6 +438,7 @@ impl Default for EditableConfig {
         Self {
             version: 1,
             settings: EditableSettings::default(),
+            gaps: Gaps::default(),
             rules: Vec::new(),
             workspaces: Vec::new(),
         }
@@ -674,6 +688,67 @@ monitor = "main"
             assert_eq!(UpdateChannel::parse(channel.as_str()), Some(channel));
         }
         assert!(Config::parse("version = 1\n[settings]\nupdate_channel = \"beta\"\n").is_err());
+    }
+
+    #[test]
+    fn parses_gaps_with_zero_defaults() {
+        assert!(Config::default().gaps().is_zero());
+        assert!(Config::parse("version = 1").unwrap().gaps().is_zero());
+        assert!(
+            Config::parse("version = 1\n[gaps]\n")
+                .unwrap()
+                .gaps()
+                .is_zero()
+        );
+
+        let gaps = Config::parse(
+            "version = 1\n[gaps]\ninner.horizontal = 8\nouter.top = 4\nouter.left = 12\n",
+        )
+        .unwrap()
+        .gaps();
+        assert_eq!((gaps.inner.horizontal, gaps.inner.vertical), (8, 0));
+        assert_eq!((gaps.outer.top, gaps.outer.left), (4, 12));
+        assert_eq!((gaps.outer.bottom, gaps.outer.right), (0, 0));
+
+        for invalid in [
+            "inner.horizontal = -1",
+            "inner.horizontal = 1.5",
+            "inner.horizontal = 70000",
+            "inner.diagonal = 1",
+            "outer = 8",
+            "middle.left = 8",
+        ] {
+            let source = format!("version = 1\n[gaps]\n{invalid}\n");
+            assert!(Config::parse(&source).is_err(), "{invalid}");
+        }
+    }
+
+    #[test]
+    fn saving_a_workspace_monitor_keeps_the_gaps() {
+        let dir = std::env::temp_dir().join(format!(
+            "spaceman-config-gaps-{}-{}",
+            std::process::id(),
+            now().as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("config.toml");
+        std::fs::write(
+            &path,
+            "version = 1\n[gaps]\ninner.vertical = 6\nouter.right = 9\n",
+        )
+        .unwrap();
+
+        let saved = save_workspace_monitor_at(&path, WorkspaceId::ONE, &DisplaySelector::Secondary)
+            .unwrap();
+        let reread = load_path(&path).unwrap();
+
+        assert_eq!(saved.gaps(), reread.gaps());
+        assert_eq!(
+            (reread.gaps().inner.vertical, reread.gaps().outer.right),
+            (6, 9)
+        );
+
+        drop(std::fs::remove_dir_all(dir));
     }
 
     #[test]
